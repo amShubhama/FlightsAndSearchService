@@ -1,67 +1,95 @@
-const { FlightRepository, AirplaneRepository } = require('../repositories/index');
-const { compareTime } = require('../utils/helper.js');
-class FlightService {
-    constructor() {
-        this.airplaneRepository = new AirplaneRepository();
-        this.flightRepository = new FlightRepository();
-    }
-    async createFlight(data) {
-        try {
-            if (!compareTime(data.arrivalTime, data.departureTime)) {
-                throw { error: 'Arrival time cannot be less than departure time' };
-            }
-            const airplane = await this.airplaneRepository.getAirplane(data.airplaneId);
-            const flight = await this.flightRepository.createFlight({
-                ...data, totalSeats: airplane.capacity
+const { StatusCodes } = require('http-status-codes');
+const { Op } = require('sequelize');
+const { FlightRepository } = require('../repositories');
+const AppError = require('../utils/errors/app-error');
+
+
+const flightRepository = new FlightRepository();
+
+async function createFlight(data) {
+    try {
+        const flight = await flightRepository.create(data);
+        return flight;
+    } catch (error) {
+        if (error.name == 'SequelizeValidationError') {
+            let explanation = [];
+            error.errors.forEach((err) => {
+                explanation.push(err.message);
             });
-            return flight;
-        } catch (error) {
-            console.log("Something went wrong at service layer");
-            throw { error };
+            throw new AppError(explanation, StatusCodes.BAD_REQUEST);
         }
-    }
-
-    async getFlight(flightId) {
-        try {
-            const flight = await this.flightRepository.getFlight(flightId);
-            return flight;
-        } catch (error) {
-            console.log("Something went wrong at the service layer");
-            throw { error };
-        }
-    }
-
-    async updateFlights(flightId, data) {
-        try {
-            const response = await this.flightRepository.updateFlights(flightId, data);
-            return response;
-        } catch (error) {
-            console.log("Something went wrong at the service layer");
-            throw { error };
-        }
-    }
-
-    async getAllFlightData(filter) {
-        try {
-            const flights = await this.flightRepository.getAllFlights(filter);
-            return flights;
-        } catch (error) {
-            console.log("Something went wrong at the service layer");
-            throw { error };
-        }
+        throw new AppError('Cannot create a new Flight object', StatusCodes.INTERNAL_SERVER_ERROR);
     }
 }
-/**
- * {
- *      flightNumber,
- *      airplaneId,
- *      departureAirportId,
- *      arrivalAirportId,
- *      arrivalTime,
- *      departureTime,
- *      price,
- *      totalSeats -> airplane 
- *      
- * }
- */
-module.exports = FlightService;
+
+async function getAllFlights(query) {
+    let customFilter = {};
+    let sortFilter = [];
+    const endingTripTime = " 23:59:00";
+    // trips=MUM-DEL
+    if (query.trips) {
+
+        [departureAirportId, arrivalAirportId] = query.trips.split("-");
+        customFilter.departureAirportId = departureAirportId;
+        customFilter.arrivalAirportId = arrivalAirportId;
+        // TODO: add a check that they are not same
+    }
+    if (query.price) {
+        [minPrice, maxPrice] = query.price.split("-");
+        customFilter.price = {
+            [Op.between]: [minPrice, ((maxPrice == undefined) ? 20000 : maxPrice)]
+        }
+    }
+    if (query.travellers) {
+        customFilter.totalSeats = {
+            [Op.gte]: query.travellers
+        }
+    }
+    if (query.tripDate) {
+        customFilter.departureTime = {
+            [Op.between]: [query.tripDate, query.tripDate + endingTripTime]
+        }
+    }
+    if (query.sort) {
+        const params = query.sort.split(',');
+        const sortFilters = params.map((param) => param.split('_'));
+        sortFilter = sortFilters
+    }
+    console.log(customFilter, sortFilter);
+    try {
+        const flights = await flightRepository.getAllFlights(customFilter, sortFilter);
+        return flights;
+    } catch (error) {
+        console.log(error);
+        throw new AppError('Cannot fetch data of all the flights', StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+}
+
+async function getFlight(id) {
+    try {
+        const flight = await flightRepository.get(id);
+        return flight;
+    } catch (error) {
+        if (error.statusCode == StatusCodes.NOT_FOUND) {
+            throw new AppError('The flight you requested is not present', error.statusCode);
+        }
+        throw new AppError('Cannot fetch data of the flight', StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+}
+
+async function updateSeats(data) {
+    try {
+        const response = await flightRepository.updateRemainingSeats(data.flightId, data.seats, data.dec);
+        return response;
+    } catch (error) {
+        console.log(error);
+        throw new AppError('Cannot update data of the flight', StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+}
+
+module.exports = {
+    createFlight,
+    getAllFlights,
+    getFlight,
+    updateSeats
+}

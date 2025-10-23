@@ -1,92 +1,73 @@
-const { Op, where } = require('sequelize');
-const { Flights } = require('../models/index.js');
+const { Sequelize } = require('sequelize');
 
-class FlightRepository {
-    #createFilter(data) {
-        let filter = {};
-        if (data.arrivalAirportId) {
-            filter.arrivalAirportId = data.arrivalAirportId;
-        }
-        if (data.departureAirportId) {
-            filter.departureAirportId = data.departureAirportId;
-        }
-        // if (data.minPrice && data.maxPrice) {
-        //     Object.assign(filter, {
-        //         [Op.and]: [
-        //             { price: { [Op.gte]: data.minPrice } },
-        //             { price: { [Op.lte]: data.maxPrice } }
-        //         ]
-        //     });
-        // }
-        let priceFilter = [];
-        if (data.minPrice) {
-            //Object.assign(filter, { price: { [Op.gte]: data.minPrice } });
-            priceFilter.push({ price: { [Op.gte]: data.minPrice } });
-        }
-        if (data.maxPrice) {
-            //Object.assign(filter, { price: { [Op.lte]: data.maxPrice } });
-            priceFilter.push({ price: { [Op.lte]: data.maxPrice } });
-        }
-        Object.assign(filter, { [Op.and]: priceFilter });
-        return filter;
-    }
-    async createFlight(data) {
-        try {
-            const flight = Flights.create(data);
-            return flight;
-        } catch (error) {
-            console.log("Something went wrong in the repository layer");
-            throw { error };
-        }
+const CrudRepository = require('./crud-repository');
+const { Flight, Airplane, Airport, City } = require('../models/index');
+const db = require('../models/index');
+const { addRowLockOnFlights } = require('./queries');
+
+
+class FlightRepository extends CrudRepository {
+    constructor() {
+        super(Flight);
     }
 
-    async getFlight(flightId) {
-        try {
-            const flight = await Flights.findByPk(flightId);
-            return flight;
-        } catch (error) {
-            console.log("Something went wrong in the repository layer");
-            throw { error };
-        }
-    }
-
-    async getAllFlights(filter) {
-        try {
-            const filterObject = this.#createFilter(filter);
-            console.log(filterObject);
-            const allFlights = await Flights.findAll({
-                // where: {
-                //     price: {
-                //         [Op.between]: [filter?.minPrice, filter?.maxPrice],
-                //     }
-                // },
-                where: filterObject,
-            });
-            return allFlights;
-        } catch (error) {
-            console.log("Something went wrong in the repository layer");
-            throw { error };
-        }
-    }
-
-    async updateFlights(flightId, data) {
-        try {
-            await Flights.update(data, {
-                where: {
-                    id: flightId
+    async getAllFlights(filter, sort) {
+        const response = await Flight.findAll({
+            where: filter,
+            order: sort,
+            include: [
+                {
+                    model: Airplane,
+                    required: true,
+                    as: 'airplaneDetail',
+                },
+                {
+                    model: Airport,
+                    required: true,
+                    as: 'departureAirport',
+                    on: {
+                        col1: Sequelize.where(Sequelize.col("Flight.departureAirportId"), "=", Sequelize.col("departureAirport.code"))
+                    },
+                    include: {
+                        model: City,
+                        required: true
+                    }
+                },
+                {
+                    model: Airport,
+                    required: true,
+                    as: 'arrivalAirport',
+                    on: {
+                        col1: Sequelize.where(Sequelize.col("Flight.arrivalAirportId"), "=", Sequelize.col("arrivalAirport.code"))
+                    },
+                    include: {
+                        model: City,
+                        required: true
+                    }
                 }
-            });
-            return true;
+            ]
+        });
+        return response;
+    }
+
+    async updateRemainingSeats(flightId, seats, dec = true) {
+        const transaction = await db.sequelize.transaction();
+        try {
+            await db.sequelize.query(addRowLockOnFlights(flightId));
+            const flight = await Flight.findByPk(flightId);
+            if (+dec) {
+                await flight.decrement('totalSeats', { by: seats }, { transaction: transaction });
+            } else {
+                await flight.increment('totalSeats', { by: seats }, { transaction: transaction });
+            }
+            await transaction.commit();
+            return flight;
         } catch (error) {
-            console.log("Something went wrong in the repository layer");
-            throw { error };
+            await transaction.rollback();
+            throw error;
         }
+
     }
 }
-
-/**
- * Select * from Flights
- * where price >= 5000 && arivalAirportId && departureAirportId
- */
 
 module.exports = FlightRepository;
