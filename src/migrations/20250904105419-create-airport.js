@@ -12,20 +12,20 @@ module.exports = {
       name: {
         type: Sequelize.STRING,
         allowNull: false,
+        unique: true
+      },
+      code: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true
       },
       address: {
         type: Sequelize.STRING,
-
+        unique: true
       },
       cityId: {
         type: Sequelize.INTEGER,
-        onDelete: 'CASCADE',
-        references: {
-          model: 'Cities',
-          key: 'id',
-          as: 'cityId'
-        },
-        allowNull: false,
+        allowNull: false
       },
       createdAt: {
         allowNull: false,

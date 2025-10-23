@@ -21,11 +21,20 @@ module.exports = (sequelize, DataTypes) => {
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+      unique: true
     },
-    address: DataTypes.STRING,
+    code: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true
+    },
+    address: {
+      type: DataTypes.STRING,
+      unique: true,
+    },
     cityId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: false
     }
   }, {
     sequelize,
