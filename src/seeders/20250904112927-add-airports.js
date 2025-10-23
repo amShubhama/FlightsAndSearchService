@@ -12,37 +12,17 @@ module.exports = {
      *   isBetaMember: false
      * }], {});
     */
-
+    const now = new Date();
     await queryInterface.bulkInsert('Airports', [
-      {
-        name: "Indira Gandhi International Airport",
-        address: "Palam, New Delhi, Delhi, India",
-        cityId: 14,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        name: "Chhatrapati Shivaji Maharaj International Airport",
-        address: "Santacruz, Mumbai, Maharashtra, India",
-        cityId: 15,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        name: "Kempegowda International Airport",
-        address: "Devanahalli, Bengaluru, Karnataka, India",
-        cityId: 16,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        name: "Netaji Subhas Chandra Bose International Airport",
-        address: "Dum Dum, Kolkata, West Bengal, India",
-        cityId: 17,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-    ], {});
+      { name: 'Chhatrapati Shivaji', code: 'BOM', address: 'Mumbai', cityId: 1, createdAt: now, updatedAt: now },
+      { name: 'Indira Gandhi', code: 'DEL', address: 'Delhi', cityId: 2, createdAt: now, updatedAt: now },
+      { name: 'Kempegowda', code: 'BLR', address: 'Bangalore', cityId: 3, createdAt: now, updatedAt: now },
+      { name: 'Chennai Intl', code: 'MAA', address: 'Chennai', cityId: 4, createdAt: now, updatedAt: now },
+      { name: 'Netaji Subhash', code: 'CCU', address: 'Kolkata', cityId: 5, createdAt: now, updatedAt: now },
+      { name: 'Rajiv Gandhi', code: 'HYD', address: 'Hyderabad', cityId: 6, createdAt: now, updatedAt: now },
+      { name: 'Goa Intl', code: 'GOI', address: 'Goa', cityId: 7, createdAt: now, updatedAt: now },
+    ]
+      , {});
   },
 
   async down(queryInterface, Sequelize) {
