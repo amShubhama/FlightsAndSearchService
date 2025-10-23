@@ -1,5 +1,5 @@
 'use strict';
-const { Enums } = require('../utils/common/index');
+const { Enums } = require('../utils/common');
 const { BUSINESS, PREMIUM_ECONOMY, FIRST_CLASS, ECONOMY } = Enums.SEAT_TYPE;
 
 /** @type {import('sequelize-cli').Migration} */
