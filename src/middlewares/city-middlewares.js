@@ -5,15 +5,16 @@ const AppError = require('../utils/errors/app-error');
 
 function validateCreateRequest(req, res, next) {
     if (!req.body.name) {
-        ErrorResponse.message = 'Something went wrong while creating city';
-        ErrorResponse.error = new AppError(['City name not found in the incoming request in the correct form'], StatusCodes.BAD_REQUEST);
-        return res
-            .status(StatusCodes.BAD_REQUEST)
-            .json(ErrorResponse);
+        ErrorResponse.message = 'Something went wrong while creating the city';
+        ErrorResponse.error = new AppError(
+            ['"name" field is missing or not provided in the correct format in the incoming request'],
+            StatusCodes.BAD_REQUEST
+        );
+        return res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
     }
     next();
 }
 
 module.exports = {
-    validateCreateRequest
-}
+    validateCreateRequest,
+};
